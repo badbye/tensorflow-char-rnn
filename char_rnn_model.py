@@ -245,9 +245,7 @@ class CharRNN(object):
 
   def sample_seq(self, session, length, start_text, vocab_index_dict,
                  index_vocab_dict, temperature=1.0, max_prob=True):
-
     state = session.run(self.zero_state)
-
     # use start_text to warm up the RNN.
     if start_text is not None and len(start_text) > 0:
       seq = list(start_text)
@@ -278,7 +276,23 @@ class CharRNN(object):
       seq.append(id2char(sample, index_vocab_dict))
       x = np.array([[sample]])
     return ''.join(seq)
-      
+
+  def seq_loss(self, session, text, vocab_index_dict, index_vocab_dict, min_length=5, max_length=30):
+    if len(text) <= min_length:
+        return 0
+    if len(text) >= max_length:
+        text = text[:max_length]
+    state = session.run(self.zero_state)
+    loss = []
+    for i, char in enumerate(text[:-1]):
+      input = np.array([[ char2id(char, vocab_index_dict) ]])
+      target = np.array([[ char2id(text[i+1], vocab_index_dict) ]])
+      state, mean_loss = session.run([self.final_state, self.mean_loss], 
+                                    {self.input_data: input, 
+                                    self.targets: target, 
+                                    self.initial_state: state})
+      loss.append(mean_loss)
+    return loss
         
 class BatchGenerator(object):
     """Generate and hold batches."""
